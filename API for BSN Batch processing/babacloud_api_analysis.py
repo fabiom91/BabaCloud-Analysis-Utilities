@@ -2,7 +2,7 @@
 # For help type python babacloud_api_analysis.py --help
 # OR read the Readme.txt file
 # Author: Manu Airaksinen, airaksinen.manu@gmail.com
-# Editor: Saeed Montazeri, montazeri1369math@gmail.com
+# Editted: Saeed Montazeri, montazeri1369math@gmail.com
 
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 import requests
@@ -187,6 +187,7 @@ def api_upload_file(url, filename, id_num, org_num, modality, labels):
                     'organization': str(org_num),
                     'modality': modality,
                     'subject': str(id_num),
+                    'analyses': 'babyeeg',
                     'labels': label_string
                     }
         )
@@ -197,6 +198,7 @@ def api_upload_file(url, filename, id_num, org_num, modality, labels):
                     'raw_file': (basename, open(filename, 'rb'), 'text/csv'),
                     'organization': str(org_num),
                     'modality': modality,
+                    'analyses': 'babyeeg',
                     'subject': str(id_num)
                     }
         )
@@ -227,7 +229,7 @@ def api_download_result(result_url, target_dir='./'):
     return target_filename
 
 
-def api_submit_rawfile(filename, target_id, modality='babyeeg', labels=None):
+def api_submit_rawfile(filename, target_id, modality='baby eeg', labels=None):
     print(f'Submitting file: {filename} to BABACloud ...')
     basename = os.path.basename(filename)
     # Get subject ID:
@@ -288,24 +290,26 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output_dir', type=str, default='./', help='output directory')
     parser.add_argument('--delete', help='Delete the data from BABAcloud after analysis.', action='store_true')
     parser.add_argument('-s', '--subject', type=str, default='Anonymous', help='Subject name')
-    parser.add_argument('-m', '--modality', type=str, default='other', help='Recording modality')
+    parser.add_argument('-m', '--modality', type=str, default='babyeeg', help='Recording modality')
     parser.add_argument('-t', '--timeout', type=int, default=None, help='Timeout time (minutes) for result waiting')
     input_args = parser.parse_args()
 
-    if input_args.modality not in ('babyeeg'):
-        sys.exit(f'Error: invalid modality: {input_args.modality}\nValid options: babyeeg')
+    if input_args.modality not in ('maiju', 'nappa', 'jumpsuit', 'babyeeg',
+                                   'sleep pants', 'cogset', 'other'):
+        sys.exit(f'Error: invalid modality: {input_args.modality}\nValid options: jumpsuit, maiju, babyeeg, nappa, cogset, other')
 
-    # if input_args.modality in ('jumpsuit', 'maiju'):
-    #     input_args.modality = 'jumpsuit'
-    #     modality_extensions = ('.csv', '.zip')
-    #     analysis_available_for_modality = True
-    if input_args.modality == 'babyeeg':
+    if input_args.modality in ('jumpsuit', 'maiju'):
+        input_args.modality = 'jumpsuit'
+        modality_extensions = ('.csv', '.zip')
+        analysis_available_for_modality = True
+    elif input_args.modality == 'babyeeg':
+        input_args.modality = 'eegpack'
         modality_extensions = ('.edf')
         analysis_available_for_modality = True
-    # elif input_args.modality in ('sleep pants', 'nappa'):
-    #     input_args.modality = 'sleep pants'
-    #     modality_extensions = ('.zip')
-    #     analysis_available_for_modality = True
+    elif input_args.modality in ('sleep pants', 'nappa'):
+        input_args.modality = 'sleep pants'
+        modality_extensions = ('.zip')
+        analysis_available_for_modality = True
     else:
         modality_extensions = ('')
         analysis_available_for_modality = False
@@ -351,7 +355,7 @@ if __name__ == '__main__':
                     break
 
             if len(upload_list) > 0:
-                time.sleep(60)
+                time.sleep(10)
                 elpased_timer = elpased_timer + 1
                 print(f'Waiting time: {elpased_timer} minute(s)')
 

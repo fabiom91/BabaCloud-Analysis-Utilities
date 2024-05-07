@@ -323,6 +323,10 @@ if __name__ == '__main__':
     # Combine information
     combined_list = combine_lists(rawfile_list, subject_list, analysisrun_list, resultfile_list)
 
+
+    if input_args.modality == 'babyeeg':
+        input_args.modality = 'eegpack'
+        
     # Filter list by desired parameters
     if input_args.modality is not None:
         filter_dict = {'modality': input_args.modality,
