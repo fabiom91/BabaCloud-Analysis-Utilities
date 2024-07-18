@@ -81,10 +81,10 @@ def api_search(url, target_id, target_key, output_keys=None):
 
                 found = True
                 break
-
+                
         if found:
             break
-
+                
         if response_js['next'] is None:
             print(f'   {target_id} not found in API: {url}')
             break
@@ -176,7 +176,7 @@ def create_monitor_callback(m):
     return callback
 
 
-def api_upload_file(url, filename, id_num, org_num, modality, labels):
+def api_upload_file(url, filename, id_num, org_num, modality, analysis, labels):
     basename = os.path.basename(filename)
     label_string = get_label_string(labels)
     if labels is not None:
@@ -187,7 +187,7 @@ def api_upload_file(url, filename, id_num, org_num, modality, labels):
                     'organization': str(org_num),
                     'modality': modality,
                     'subject': str(id_num),
-                    'analyses': 'babyeeg',
+                    'analyses': analysis,
                     'labels': label_string
                     }
         )
@@ -198,7 +198,7 @@ def api_upload_file(url, filename, id_num, org_num, modality, labels):
                     'raw_file': (basename, open(filename, 'rb'), 'text/csv'),
                     'organization': str(org_num),
                     'modality': modality,
-                    'analyses': 'babyeeg',
+                    'analyses': analysis,
                     'subject': str(id_num)
                     }
         )
@@ -229,7 +229,7 @@ def api_download_result(result_url, target_dir='./'):
     return target_filename
 
 
-def api_submit_rawfile(filename, target_id, modality='baby eeg', labels=None):
+def api_submit_rawfile(filename, target_id, modality='eegpack', analysis='babyeeg', labels=None):
     print(f'Submitting file: {filename} to BABACloud ...')
     basename = os.path.basename(filename)
     # Get subject ID:
@@ -242,7 +242,8 @@ def api_submit_rawfile(filename, target_id, modality='baby eeg', labels=None):
     if not rawfile_exists:
         print(f'   Uploading rawfile: {filename} to modality: {modality} ...')
         id_raw = api_upload_file(url_rawfile, filename, id_sub, org_num,
-                                 modality=modality, labels=labels)
+                                 modality=modality, analysis=analysis,
+                                 labels=labels)
 
     return id_raw
 
@@ -263,7 +264,7 @@ def api_get_result(id_raw, target_dir='./'):
             print(f'   Resultfile (id_raw: {id_raw}, id_result: {id_result}) found. Downloading ...')
             fname = api_download_result(result_url, target_dir=target_dir)
             print('Download successful.')
-        else:
+        elif output['error_message'] is not None:
             error_msg = output['error_message']
             print(f'Analysis failed: {error_msg}')
 
@@ -292,11 +293,12 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', type=str, default='Anonymous', help='Subject name')
     parser.add_argument('-m', '--modality', type=str, default='babyeeg', help='Recording modality')
     parser.add_argument('-t', '--timeout', type=int, default=None, help='Timeout time (minutes) for result waiting')
+    parser.add_argument('-a', '--analysis', type=list, default=['babyeeg'])
     input_args = parser.parse_args()
 
     if input_args.modality not in ('maiju', 'nappa', 'jumpsuit', 'babyeeg',
-                                   'sleep pants', 'cogset', 'other'):
-        sys.exit(f'Error: invalid modality: {input_args.modality}\nValid options: jumpsuit, maiju, babyeeg, nappa, cogset, other')
+                                    'sleep pants', 'cogset', 'other'):
+        sys.exit(f'Error: invalid modality: {input_args.modality}\nValid options: jumpsuit, maiju, eegpack, nappa, cogset, other')
 
     if input_args.modality in ('jumpsuit', 'maiju'):
         input_args.modality = 'jumpsuit'
@@ -304,6 +306,7 @@ if __name__ == '__main__':
         analysis_available_for_modality = True
     elif input_args.modality == 'babyeeg':
         input_args.modality = 'eegpack'
+        input_args.analysis = ['babyeeg']
         modality_extensions = ('.edf')
         analysis_available_for_modality = True
     elif input_args.modality in ('sleep pants', 'nappa'):
@@ -313,70 +316,76 @@ if __name__ == '__main__':
     else:
         modality_extensions = ('')
         analysis_available_for_modality = False
-
+    
     if os.path.isdir(input_args.input):
         input_files = os.listdir(input_args.input)
         input_files = [os.path.join(input_args.input, file) for file in input_files
-                       if (file[0] != '.') and file.endswith(modality_extensions)]
-
+                        if (file[0] != '.') and file.endswith(modality_extensions)]
+    
     else:
         if os.path.isfile(input_args.input) and (input_args.input[0] != '.') and input_args.input.endswith(modality_extensions):  # Interpret input as a file
             input_files = [input_args.input]
-
+    
         else:
             sys.exit(f'Error: invalid input: {input_args.input}')
-
+    
+    
     os.makedirs(input_args.output_dir, exist_ok=True)
-
+    
     target_id = input_args.subject
     
-    upload_list = []
-    delete_list = []
-    elpased_timer = 0
-    for i, filename in enumerate(input_files):
-        # Upload rawfile:
-        id_raw = api_submit_rawfile(filename, target_id,
-                                    modality=input_args.modality)
-        upload_list.append({'id_raw': id_raw, 'filename': filename})
-
-    # Check for resultfile:
-    if analysis_available_for_modality:
-        print('Waiting for resultfiles')
-        time_start = time.time()
-        while len(upload_list) > 0:
-            for i, item in enumerate(upload_list):
-                analysis_found, result_fname = api_get_result(item['id_raw'],
-                                                              input_args.output_dir)
-                if analysis_found:
-                    delete_list.append(upload_list.pop(i))
-            if input_args.timeout:
-                if time.time() > input_args.timeout * 60 + time_start: # - is changed to +
-                    print('Timeout')
-                    break
-
-            if len(upload_list) > 0:
-                time.sleep(10)
-                elpased_timer = elpased_timer + 1
-                print(f'Waiting time: {elpased_timer} minute(s)')
-
-    if len(upload_list) > 0:
-        print('Files without completed analysis: ')
-        print(upload_list)
-        print('')
-
-    if input_args.delete:
-        print(f'Deleting {len(delete_list)} recordings ...')
-        for item in delete_list:
-            fn = item['filename']
-            id = item['id_raw']
-            print(f'   Deleting {fn} (id={id}) ')
-            api_delete_all(item['id_raw'])
-
+    
+    for j, this_analysis in enumerate(input_args.analysis):
+        upload_list = []
+        delete_list = []
+        elpased_timer = 0
+        for i, filename in enumerate(input_files):
+                # Upload rawfile:
+                id_raw = api_submit_rawfile(filename, target_id,
+                                            modality=input_args.modality,
+                                            analysis=this_analysis)
+                upload_list.append({'id_raw': id_raw, 'filename': filename})
+        
+        # Check for resultfile:
+        if analysis_available_for_modality:
+            print('Waiting for resultfiles')
+            time.sleep(1)
+            time_start = time.time()
+            while len(upload_list) > 0:
+                for i, item in enumerate(upload_list):
+                    analysis_found, result_fname = api_get_result(item['id_raw'],
+                                                                  input_args.output_dir)
+                    if analysis_found and result_fname is not None:
+                        delete_list.append(upload_list.pop(i))
+                if input_args.timeout:
+                    if time.time() > input_args.timeout * 60 + time_start: # - is changed to +
+                        print('Timeout')
+                        break
+        
+                if len(upload_list) > 0:
+                    time.sleep(10)
+                    if time.time() - time_start - (elpased_timer * 60)>= 60:
+                        elpased_timer = elpased_timer + 1
+                        print(f'Waiting time: {elpased_timer} minute(s)')
+        
         if len(upload_list) > 0:
-            for item in upload_list:
+            print('Files without completed analysis: ')
+            print(upload_list)
+            print('')
+        
+        if input_args.delete:
+            print(f'Deleting {len(delete_list)} recordings ...')
+            for item in delete_list:
                 fn = item['filename']
                 id = item['id_raw']
                 print(f'   Deleting {fn} (id={id}) ')
                 api_delete_all(item['id_raw'])
-
+        
+            if len(upload_list) > 0:
+                for item in upload_list:
+                    fn = item['filename']
+                    id = item['id_raw']
+                    print(f'   Deleting {fn} (id={id}) ')
+                    api_delete_all(item['id_raw'])
+        
     print('Done.')
