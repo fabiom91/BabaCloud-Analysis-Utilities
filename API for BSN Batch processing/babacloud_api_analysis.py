@@ -166,7 +166,8 @@ def create_monitor_callback(m):
         # done = int(50 * progress/encoder_len)
         time_now = time.time()
         elapsed = time_now - time_start
-        speed = ((progress - _progress_prev) / (1024 * 1024)) / (time_now - _time_prev)
+        epsilon = 1e-6 # Avoid division by zero error when time_now == _time_prev
+        speed = ((progress - _progress_prev) / (1024 * 1024)) / ((time_now - _time_prev) + epsilon)
 
         _progress_prev = progress
         _time_prev = time_now
