@@ -23,7 +23,12 @@ url_analysisrun = "https://babacloud.fi/apiv1/analysisrun/"
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
+def retry_if_connection_error(exception):
+    '''Return True if we should retry (in this case when it's an ConnectionError), False otherwise'''
+    return isinstance(exception, requests.exceptions.ConnectionError)
 
+# Retry on connection error; Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds.
+@retry(retry_on_exception=retry_if_connection_error, wait_exponential_multiplier=1000, wait_exponential_max=100000, stop_max_attempt_number=10)
 def api_delete(url, id):
     if id == '':
         return False
@@ -31,7 +36,8 @@ def api_delete(url, id):
                                                           credentials.pw))
     return response.ok
 
-
+# Retry on connection error; Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds.
+@retry(retry_on_exception=retry_if_connection_error, wait_exponential_multiplier=1000, wait_exponential_max=100000, stop_max_attempt_number=10)
 def api_get(url, id):
     response = requests.get(url + str(id) + '/', auth=(credentials.user,
                                                        credentials.pw))
@@ -59,7 +65,8 @@ def api_delete_all(id_raw, delete_subject=False):
 
     return output_ok
 
-
+# Retry on connection error; Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds.
+@retry(retry_on_exception=retry_if_connection_error, wait_exponential_multiplier=1000, wait_exponential_max=100000, stop_max_attempt_number=10)
 def api_search(url, target_id, target_key, output_keys=None):
     try:
         response = requests.get(url, auth=(credentials.user, credentials.pw))
@@ -97,7 +104,8 @@ def api_search(url, target_id, target_key, output_keys=None):
     output.update({'found': found})
     return output
 
-
+# Retry on connection error; Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds.
+@retry(retry_on_exception=retry_if_connection_error, wait_exponential_multiplier=1000, wait_exponential_max=100000, stop_max_attempt_number=10)
 def api_search_rawfile(fname, target_subject):
     target_bname = os.path.basename(fname)
     response = requests.get(url_rawfile, auth=(credentials.user,
@@ -123,7 +131,8 @@ def api_search_rawfile(fname, target_subject):
 
     return found, id
 
-
+# Retry on connection error; Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds.
+@retry(retry_on_exception=retry_if_connection_error, wait_exponential_multiplier=1000, wait_exponential_max=100000, stop_max_attempt_number=10)
 def api_create_subject(url, target_id):
     print(f'   Creating new ID: {target_id}')
     m = MultipartEncoder(fields={'identifier': target_id})
@@ -177,10 +186,6 @@ def create_monitor_callback(m):
 
     return callback
 
-def retry_if_connection_error(exception):
-    '''Return True if we should retry (in this case when it's an ConnectionError), False otherwise'''
-    return isinstance(exception, requests.exceptions.ConnectionError)
-
 # Retry on connection error; Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds.
 @retry(retry_on_exception=retry_if_connection_error, wait_exponential_multiplier=1000, wait_exponential_max=100000, stop_max_attempt_number=10)
 def api_upload_file(url, filename, id_num, org_num, modality, analysis, labels):
@@ -224,7 +229,8 @@ def api_upload_file(url, filename, id_num, org_num, modality, analysis, labels):
     print(f'\nUpload complete (id: {id_raw}) (elapsed time: {(time_stop-time_start):0.2f} s)')
     return id_raw
 
-
+# Retry on connection error; Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds.
+@retry(retry_on_exception=retry_if_connection_error, wait_exponential_multiplier=1000, wait_exponential_max=100000, stop_max_attempt_number=10)
 def api_download_result(result_url, target_dir='./'):
     response = requests.get(result_url, auth=(credentials.user,
                                               credentials.pw))
