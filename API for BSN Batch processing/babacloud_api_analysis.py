@@ -11,6 +11,7 @@ import os
 import time
 import sys
 import argparse
+from retrying import retry
 
 import credentials  # Required: credentials.py with user=username; pw=password in same directory
 
@@ -176,7 +177,12 @@ def create_monitor_callback(m):
 
     return callback
 
+def retry_if_connection_error(exception):
+    '''Return True if we should retry (in this case when it's an ConnectionError), False otherwise'''
+    return isinstance(exception, requests.exceptions.ConnectionError)
 
+# Retry on connection error; Wait 2^x * 1000 milliseconds between each retry, up to 10 seconds.
+@retry(retry_on_exception=retry_if_connection_error, wait_exponential_multiplier=1000, wait_exponential_max=100000, stop_max_attempt_number=10)
 def api_upload_file(url, filename, id_num, org_num, modality, analysis, labels):
     basename = os.path.basename(filename)
     label_string = get_label_string(labels)
