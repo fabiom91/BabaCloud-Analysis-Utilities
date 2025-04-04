@@ -62,8 +62,12 @@ for i = 1:length(ZIPFiles)
     % Extracts data from the ZIP and retrieves the baby ID from the CSV filename.
     [analysesOuts, babyID] = readfromZIPfiles([BABACloudFiles ZIPFiles{i}], tmpFolder);
 
-    % Save the extracted information
-    save([saveto babyID '.mat'], 'analysesOuts')
+    % Use the zip file name (without extension) as the output file name.
+    [~, zipBaseName, ~] = fileparts(ZIPFiles{i});
+    outputFile = fullfile(saveto, [zipBaseName '.mat']);
+    
+    % Save the extracted data
+    save(outputFile, 'analysesOuts')
 end
 
 rmpath(UtilPwd)
