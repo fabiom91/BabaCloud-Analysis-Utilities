@@ -2,11 +2,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [ZIPcontent] = readfromZIPfiles(to_its_zip, tmp_folder, SubjectID)
-% Extract information from ZIP file
-extractFile(to_its_zip,tmp_folder, [SubjectID '_Classifiers_result.csv']);
-M = readtable([tmp_folder SubjectID '_Classifiers_result.csv'],'Delimiter',{';'},'NumHeaderLines',0,'VariableNamingRule','preserve');
-delete([tmp_folder SubjectID '_Classifiers_result.csv'])
+function [ZIPcontent, babyID] = readfromZIPfiles(to_its_zip, tmp_folder)
+% Extract information from ZIP file using extractBabyCSV.
+[extractedCSV, babyID] = extractBabyCSV(to_its_zip, tmp_folder);
+M = readtable(extractedCSV, 'Delimiter', { ';' }, 'NumHeaderLines', 0, 'VariableNamingRule', 'preserve');
+delete(extractedCSV)
 
 f_seizure = find(strncmp(M{:,1},'Seizures',8));
 f_artifact = find(strncmp(M{:,1},'Artefacts',9));
