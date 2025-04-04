@@ -49,7 +49,9 @@ addpath(UtilPwd)
 BABACloudFiles = './output/'; % BABACloud analysis outputs, zip files
 tmpFolder = './tmp/'; % A folder to save temporary files
 saveto = './ZIPcontent/'; % Save extracted data into
-SubjectID = 'Anonymous'; % Babacloud API default is Anonymous
+% SubjectID is extracted from the results files.
+% This also allow multiple babyID in the same folder.
+% SubjectID = 'Anonymous'; % Babacloud API default is Anonymous
 
 % List ZIP files in the folder
 ZIPFiles = findZIPFiles(BABACloudFiles);
@@ -57,11 +59,11 @@ ZIPFiles = findZIPFiles(BABACloudFiles);
 % Main
 for i = 1:length(ZIPFiles)
     disp(['Pocessing: ' ZIPFiles{i}])
-    % This line reads and extracts all the results stored in the zip file
-    [analysesOuts] = readfromZIPfiles([BABACloudFiles ZIPFiles{i}], tmpFolder, SubjectID);
+    % Extracts data from the ZIP and retrieves the baby ID from the CSV filename.
+    [analysesOuts, babyID] = readfromZIPfiles([BABACloudFiles ZIPFiles{i}], tmpFolder);
 
     % Save the extracted information
-    save([saveto ZIPFiles{i}(1:end-19) '.mat'], 'analysesOuts')
+    save([saveto babyID '.mat'], 'analysesOuts')
 end
 
 rmpath(UtilPwd)
